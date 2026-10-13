@@ -1,0 +1,24 @@
+# Description: GET DATA: read the application transaction counter (ATC) tag.
+# Category: utilities
+#
+# WHAT THIS DOES
+# GET DATA reads one single data object from the currently selected
+# application, identified by a two-byte tag, without going through the file
+# system. The tag used here, 9F 36, is the application transaction counter
+# (ATC) kept by payment applications: a counter that increases with every
+# transaction. On a payment card you get its 2 bytes back; on cards without
+# such an application the same tag simply does not exist and you receive
+# SW 6A 88 ("referenced data not found"), which is harmless. This command
+# does not modify the card.
+#
+# THE COMMAND, BYTE BY BYTE
+#   80     class byte: GET DATA uses the proprietary/reserved class
+#   CA     instruction: GET DATA
+#   9F 36  P1-P2: the two-byte tag to read; replace with any tag that is
+#          documented for the application you selected
+#   00     Le = 0: return the complete object, up to 256 bytes
+#
+# WHAT YOU SHOULD SEE
+#   A small TLV object (tag 9F 36, length 02, then the counter bytes)
+#   followed by SW 90 00, or SW 6A 88 if the application has no such tag.
+80 CA 9F 36 00

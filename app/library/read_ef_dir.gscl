@@ -1,0 +1,28 @@
+# Description: Read EF.DIR, which lists the applications available on the card.
+# Category: reading
+#
+# WHAT THIS DOES
+# Step 1 selects EF.DIR (the standard application directory file) and step 2
+# reads it from the beginning. EF.DIR contains a directory of the
+# applications on the card: each entry is a small record whose most useful
+# field is the application identifier (AID). Copy any AID you find here into
+# the select_aid_template script to select that application directly.
+# Reading does not modify the card.
+#
+# THE COMMANDS, BYTE BY BYTE
+#   00 A4 02 00 02 2F 00
+#       SELECT FILE, P1 = 2 (select an elementary file by identifier),
+#       file identifier 2F 00 = EF.DIR.
+#   00 B0 00 00
+#       READ BINARY, offset 0 (P1-P2 form a 15-bit offset, here 0), with no
+#       explicit length: the card returns up to 256 bytes or up to the end
+#       of the file, whichever comes first.
+#
+# WHAT YOU SHOULD SEE
+#   After the SELECT: SW 90 00, or SW 61 XX with data still waiting.
+#   After the READ: the EF.DIR contents followed by SW 90 00; SW 6B 00 means
+#   the offset lies beyond the end of the file.
+#
+# These commands do not write anything to the card.
+00 A4 02 00 02 2F 00
+00 B0 00 00

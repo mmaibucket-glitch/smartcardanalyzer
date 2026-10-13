@@ -1,0 +1,35 @@
+# Description: VERIFY a cardholder PIN; EDIT the PIN bytes first - risk of blocking.
+# Category: templates
+#
+# !!! USE WITH CARE - TOO MANY WRONG ATTEMPTS CAN BLOCK THE CARD !!!
+# VERIFY is not a harmless read command: the card counts wrong attempts and,
+# once the retry counter (often 3) runs out, it LOCKS the PIN - permanently,
+# or until the card is unblocked with special credentials. Never experiment
+# with guessed PINs.
+#
+# WHAT THIS DOES
+# Sends PIN data to the card so that commands protected by cardholder
+# verification become allowed. The status word tells you the outcome:
+#   90 00     the PIN (or other secret) was correct
+#   63 C X    verification failed and X attempts remain
+#             (63 C2 = two attempts left, 63 C1 = one attempt left)
+#   63 C0 / 69 83   the PIN is now blocked
+#
+# !!! EDIT BEFORE USE !!!
+# The four digits below (31 32 33 34 = the ASCII characters "1234") are a
+# PLACEHOLDER. Replace them with the real PIN digits encoded in ASCII
+# (digit '0' = byte 30, '1' = 31, ... '9' = 39) and pad on the right with
+# FF up to the PIN length your card expects (8 bytes total here). The key
+# reference 81 in P2 is a placeholder too: check your card's manual for
+# which key number holds the PIN. Adjust Lc if your card uses a different
+# PIN length.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00             class byte: standard interindustry commands
+#   20             instruction: VERIFY
+#   00             P1 = 0 (reserved)
+#   81             P2: key reference 0x81 (PLACEHOLDER, see above)
+#   08             Lc: 8 data bytes follow
+#   31 32 33 34    ASCII digits "1234" - PLACEHOLDER, edit these
+#   FF FF FF FF    padding up to 8 bytes (exact format depends on the card)
+00 20 00 81 08 31 32 33 34 FF FF FF FF

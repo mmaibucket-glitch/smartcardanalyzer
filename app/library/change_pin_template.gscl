@@ -1,0 +1,33 @@
+# Description: CHANGE REFERENCE DATA (change a PIN) - WRITE operation, edit first.
+# Category: templates
+#
+# !!! THIS IS A WRITE OPERATION - IT PERMANENTLY CHANGES THE CARD !!!
+# CHANGE REFERENCE DATA replaces the PIN (or another secret) stored on the
+# card. A mistake here leaves you with a PIN you do not know, and wrong
+# attempts count against the retry counter exactly as they do for VERIFY.
+# Do not run this against a card you are not free to modify.
+#
+# WHAT THIS DOES
+# Template that replaces the current PIN with new PIN data. Many cards
+# expect the data as "current PIN block || new PIN block"; with 8-byte PIN
+# blocks that means 16 data bytes and Lc = 10. The line below shows the
+# single-block form (Lc = 08) used by cards that only want the new PIN
+# block - check your card's manual to learn which form it expects, then
+# EDIT BEFORE USE.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00                     class byte: standard interindustry commands
+#   24                     instruction: CHANGE REFERENCE DATA
+#   00                     P1 = 0: change, without unblocking
+#   81                     P2: key reference 0x81 (PLACEHOLDER)
+#   08                     Lc: 8 data bytes follow (10 for two blocks)
+#   31 32 33 34 FF FF FF FF
+#                          PLACEHOLDER data: PIN digits "1234" right-padded
+#                          with FF (current PIN, or the NEW PIN block,
+#                          depending on your card)
+#
+# WHAT YOU SHOULD SEE
+#   SW 90 00               the reference data was changed
+#   63 C X                 wrong current PIN, X attempts remain
+#   63 C0 / 69 83          the PIN is now blocked
+00 24 00 81 08 31 32 33 34 FF FF FF FF

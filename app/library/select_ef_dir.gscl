@@ -1,0 +1,23 @@
+# Description: Select EF.DIR, the card's built-in application directory file.
+# Category: selection
+#
+# WHAT THIS DOES
+# EF.DIR is a standard file that lists the applications (AIDs) available on
+# the card. This script only SELECTS the file; it does not read it yet. The
+# companion script read_ef_dir selects EF.DIR and then reads its contents.
+# Nothing on the card is modified.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00     class byte: standard interindustry commands
+#   A4     instruction: SELECT FILE
+#   02     P1 = 2: select an elementary file (EF) by file identifier
+#   00     P2 = 0: first or only occurrence, no control info requested
+#   02     Lc: exactly 2 data bytes follow
+#   2F 00  file identifier reserved for EF.DIR by the ISO 7816-4 standard
+#
+# WHAT YOU SHOULD SEE
+#   SW 90 00 or 61 XX    EF.DIR is now the currently selected file
+#   SW 6A 82             the card has no EF.DIR under the current directory
+#
+# This command does not write anything to the card.
+00 A4 02 00 02 2F 00

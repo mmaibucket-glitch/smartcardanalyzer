@@ -1,0 +1,31 @@
+# Description: INTERNAL AUTHENTICATE - asks the card to prove it holds a secret key.
+# Category: templates
+#
+# WHAT THIS DOES
+# INTERNAL AUTHENTICATE sends 8 bytes of challenge data to the card; the
+# card encrypts or MACs them with a secret key stored inside itself and
+# returns the 8-byte result (the cryptogram). Only a card holding the right
+# key can produce the answer your system expects, so this proves the card
+# is genuine. The command itself does not modify the card, but it only
+# works when the card actually contains a key for the referenced key
+# number.
+#
+# !!! EDIT BEFORE USE !!!
+# The challenge bytes below (00 01 02 03 04 05 06 07) are a PLACEHOLDER.
+# For a real authentication, replace them with fresh unpredictable bytes -
+# replaying an old challenge weakens the proof - and make sure P2 selects
+# the key reference your card expects.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00                         class byte: standard interindustry commands
+#   88                         instruction: INTERNAL AUTHENTICATE
+#   00                         P1 = 0 (reserved)
+#   00                         P2: key reference 0 (PLACEHOLDER)
+#   08                         Lc: 8 challenge bytes follow
+#   00 01 02 03 04 05 06 07    PLACEHOLDER challenge data
+#
+# WHAT YOU SHOULD SEE
+#   8 bytes of response data (the cryptogram) followed by SW 90 00, or
+#   SW 69 88 / 69 85 if the referenced key does not exist or its conditions
+#   of use are not satisfied.
+00 88 00 00 08 00 01 02 03 04 05 06 07

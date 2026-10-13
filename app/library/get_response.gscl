@@ -1,0 +1,23 @@
+# Description: GET RESPONSE: fetch data waiting after a 61 XX "more data" status.
+# Category: utilities
+#
+# WHAT THIS DOES
+# When a card answers a command with status 61 XX it means: "I succeeded,
+# and XX more bytes of response data are waiting for you." This script sends
+# GET RESPONSE to collect those bytes. Run it immediately after you see a
+# 61 XX status word, for example after a SELECT FILE. GET RESPONSE does not
+# modify the card.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00     class byte: standard interindustry commands
+#   C0     instruction: GET RESPONSE
+#   00 00  P1-P2 must be zero for this command
+#   20     Le: how many of the waiting bytes to request; 0x20 = 32. Replace
+#          20 with the XX from the 61 XX status you received (Le 00 asks
+#          for all 256 remaining bytes).
+#
+# WHAT YOU SHOULD SEE
+#   The pending data followed by SW 90 00. If the card again answers 61 XX,
+#   more data is still waiting: send GET RESPONSE again with the new XX.
+#   SW 6C XX asks you to resend the previous command with Le = XX.
+00 C0 00 00 20

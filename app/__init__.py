@@ -1,0 +1,1 @@
+"""Smartcard Tool application package."""

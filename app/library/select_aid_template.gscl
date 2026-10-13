@@ -1,0 +1,32 @@
+# Description: Select an application by name (AID); EDIT the AID bytes first.
+# Category: templates
+#
+# WHAT THIS DOES
+# Selects an application on the card by its application identifier (AID),
+# also called the DF name. This is how you "enter" an application such as a
+# payment, ID, or loyalty application before sending the commands it
+# understands.
+#
+# !!! EDIT BEFORE USE !!!
+# The AID below (A0 00 00 00 04 10 10) is only an EXAMPLE. Replace the
+# seven AID bytes with an application identifier that is valid for your
+# card: for example one you saw in the output of the read_ef_dir script,
+# one from the card's documentation, or one from its specification. Then
+# adjust Lc (the byte that says how many AID bytes follow, here 07) so it
+# always equals the number of AID bytes you entered.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00                   class byte: standard interindustry commands
+#   A4                   instruction: SELECT FILE
+#   04                   P1 = 4: select by DF name (the AID)
+#   00                   P2 = 0: first or only occurrence, no control info
+#   07                   Lc: exactly 7 data bytes follow
+#   A0 00 00 00 04 10 10 EXAMPLE AID - replace with your card's own AID
+#
+# WHAT YOU SHOULD SEE
+#   SW 90 00 or 61 XX    the application was selected
+#   SW 6A 82             no application with that AID exists on the card
+#
+# Selecting an application does not by itself modify the card, but the
+# selected application decides which commands it accepts next.
+00 A4 04 00 07 A0 00 00 00 04 10 10

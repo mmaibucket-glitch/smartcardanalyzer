@@ -1,0 +1,27 @@
+# Description: Select the master file (MF), the root directory of the card.
+# Category: selection
+#
+# WHAT THIS DOES
+# Every smart card with a file system has one "master file" (MF), which is
+# the root folder of everything stored on the card. Selecting it is a safe,
+# standard operation: nothing on the card is modified. Afterwards the MF is
+# the "currently selected file", which is where many other commands (such
+# as READ BINARY) act.
+#
+# THE COMMAND, BYTE BY BYTE
+#   00     class byte: standard interindustry commands
+#   A4     instruction: SELECT FILE
+#   00     P1 = 0: select by file identifier, first occurrence
+#   00     P2 = 0: first or only occurrence, no control info requested
+#   02     Lc: exactly 2 data bytes follow
+#   3F 00  file identifier reserved for the MF by the ISO 7816-4 standard
+#
+# WHAT YOU SHOULD SEE
+#   SW 90 00          the MF was selected (success)
+#   SW 61 XX          success, plus XX bytes of file-control data waiting;
+#                     fetch them afterwards with the get_response script
+#   other SW          the card may have no MF at all (for example an
+#                     application-only card without a file system)
+#
+# This command does not write anything to the card.
+00 A4 00 00 02 3F 00
