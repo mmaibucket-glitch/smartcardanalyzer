@@ -44,6 +44,7 @@ class FuzzTab(QWidget):
         self._syncing_safe_mode = False
         self._build_ui()
         main_window.session_changed.connect(self._on_session_changed)
+        main_window.operation_changed.connect(self._on_operation_changed)
         main_window.safety_changed.connect(self._on_safety_changed)
         self._update_run_state()
 
@@ -103,8 +104,8 @@ class FuzzTab(QWidget):
             bool(getattr(self.main_window, "safe_mode", True))
         )
         self.safe_mode_check.setToolTip(
-            "Restrict fuzzing to read-only commands so nothing on the card can be "
-            "modified."
+            "Safe mode skips known card-modifying instruction codes. Other and "
+            "unknown commands can still be sent."
         )
         self.safe_mode_check.toggled.connect(self._on_safe_mode_toggled)
         layout.addWidget(self.safe_mode_check)
@@ -128,6 +129,9 @@ class FuzzTab(QWidget):
         self.stop_button.clicked.connect(self._stop)
 
     def _start(self) -> None:
+        if self.main_window.operation_busy:
+            self._status("Wait for the current card operation to finish.", 3000)
+            return
         session = self.main_window.session
         if session is None:
             self._status("Connect to a reader first.", 3000)
@@ -157,7 +161,7 @@ class FuzzTab(QWidget):
         if self.main_window.safe_mode:
             ins_pool = list(fuzz.READ_ONLY_INS_POOL)
             self.log.log_message(
-                "Safe mode: fuzzing restricted to read-only commands", "info"
+                "Safe mode skips known card-modifying instruction codes", "info"
             )
         else:
             ins_pool = sorted(safety.INSTRUCTION_NAMES)
@@ -205,6 +209,8 @@ class FuzzTab(QWidget):
         self._runner.step.connect(self._on_step)
         self._runner.completed.connect(self._on_completed)
         self._runner.failed.connect(self._on_failed)
+        if not self.main_window.register_runner(self._runner):
+            return
         self._running = True
         self._update_run_state()
         self._runner.start()
@@ -293,13 +299,21 @@ class FuzzTab(QWidget):
         self._syncing_safe_mode = False
         self.restriction_label.setText(self._restriction_text(safe_mode))
 
+    def _on_operation_changed(self, busy: bool) -> None:
+        self.safe_mode_check.setEnabled(not busy)
+        self._update_run_state()
+
     def _restriction_text(self, safe_mode: bool) -> str:
         if safe_mode:
-            return "Safe mode: card-modifying cases are skipped"
+            return "Safe mode skips known card-modifying instructions; other commands may be sent"
         return "Safe mode off: all known instructions"
 
     def _update_run_state(self) -> None:
-        ready = self.main_window.session is not None and not self._running
+        ready = (
+            self.main_window.session is not None
+            and not self._running
+            and not self.main_window.operation_busy
+        )
         self.start_button.setEnabled(ready)
         self.stop_button.setEnabled(self._running)
 

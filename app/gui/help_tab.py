@@ -43,7 +43,7 @@ APDU_LAYOUT_ROWS: list[tuple[str, str, str]] = [
     ("INS", "1 byte", "The command, e.g. A4 for SELECT FILE"),
     ("P1", "1 byte", "First command parameter"),
     ("P2", "1 byte", "Second command parameter"),
-    ("Lc", "1 byte", "Length of the data you send; 00 when there is none"),
+    ("Lc", "1 byte", "Present only when the command includes data; states its byte length"),
     ("Data", "Lc bytes", "Optional payload the command needs"),
     ("Le", "1 byte", "How many bytes you want back; 00 means 256"),
 ]
@@ -79,10 +79,16 @@ GLOSSARY_ROWS: list[tuple[str, str]] = [
 
 WALKTHROUGH_STEPS: list[str] = [
     "<b>Console tab</b>: press <b>Refresh</b>, then <b>Connect</b> (a card must be "
-    "inserted in the reader). Safe mode is on by default and blocks anything that "
-    "could modify the card.",
+    "inserted in the reader). Safe mode is on by default and blocks known "
+    "card-modifying instruction codes. Authentication and unknown commands remain "
+    "available, so check each command before sending it.",
     "<b>Inspector tab</b>: press <b>Inspect card</b>. The read-only scan shows what "
-    "the card is, which applications it carries, and gives 'Try next' suggestions.",
+    "the card is and which applications it carries. Then choose <b>Read accessible "
+    "data</b> to view decoded fields and raw responses. Payment applications are "
+    "checked for readable records and counters without a PIN or transaction "
+    "initialization; other applications show selection metadata. Use <b>Stop</b> "
+    "to end the scan. Returned account fields are summarized automatically. "
+    "Some data may remain inaccessible.",
     "<b>Script tab</b>: in the Library panel load the bundled <b>read_ef_dir</b> "
     "script, then press <b>Run</b>. Other read-only starters: <b>select_mf</b>, "
     "<b>read_binary</b>, <b>get_data</b>, <b>get_response</b>.",
@@ -91,8 +97,8 @@ WALKTHROUGH_STEPS: list[str] = [
     "BINARY (B0), READ RECORD (B2), GET RESPONSE (C0), VERIFY (20), INTERNAL "
     "AUTHENTICATE (88), GET CHALLENGE (84).",
     "<b>Fuzz tab</b>: stress-tests a card by sending many commands. Safe mode there "
-    "restricts fuzzing to read-only commands - leave it on unless you are sure the "
-    "card tolerates more.",
+    "skips known card-modifying instructions. Other commands, including unknown "
+    "instructions, can still be sent.",
 ]
 
 

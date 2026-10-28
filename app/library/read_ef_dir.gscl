@@ -13,10 +13,9 @@
 #   00 A4 02 00 02 2F 00
 #       SELECT FILE, P1 = 2 (select an elementary file by identifier),
 #       file identifier 2F 00 = EF.DIR.
-#   00 B0 00 00
-#       READ BINARY, offset 0 (P1-P2 form a 15-bit offset, here 0), with no
-#       explicit length: the card returns up to 256 bytes or up to the end
-#       of the file, whichever comes first.
+#   00 B0 00 00 00
+#       READ BINARY, offset 0 (P1-P2 form a 15-bit offset, here 0), requesting
+#       256 bytes (short Le 00 means 256). The card may return fewer at EOF.
 #
 # WHAT YOU SHOULD SEE
 #   After the SELECT: SW 90 00, or SW 61 XX with data still waiting.
@@ -25,4 +24,4 @@
 #
 # These commands do not write anything to the card.
 00 A4 02 00 02 2F 00
-00 B0 00 00
+00 B0 00 00 00

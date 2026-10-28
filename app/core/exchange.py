@@ -37,30 +37,47 @@ def transmit_smart(
     exchange unchanged. Each transmit is reported via on_step(apdu, data, sw1,
     sw2). Only simple (one-byte) Lc/Le encodings are handled.
     """
+    if max_followups < 0:
+        raise ValueError("max_followups must be non-negative.")
     result = ExchangeResult(apdu=bytes(apdu), data=b"", sw1=0x00, sw2=0x00)
     current = bytes(apdu)
+    le_retried = False
     for _ in range(max_followups + 1):
         data, sw1, sw2 = session.transmit(current)
         result.exchanges.append((current, data, sw1, sw2))
         if on_step is not None:
             on_step(current, data, sw1, sw2)
+        result.sw1, result.sw2 = sw1, sw2
         if sw1 == 0x6C:
-            current = _with_le(current, sw2)
-            continue
+            corrected = None if le_retried else _with_le(current, sw2)
+            if corrected is not None:
+                current = corrected
+                le_retried = True
+                continue
+            result.sw1, result.sw2 = sw1, sw2
+            return result
         result.data += data
         result.sw1, result.sw2 = sw1, sw2
         if sw1 != 0x61:
             return result
         current = bytes([0x00, 0xC0, 0x00, 0x00, sw2])
+        le_retried = False
     return result
 
 
-def _with_le(apdu: bytes, le: int) -> bytes:
+def _with_le(apdu: bytes, le: int) -> Optional[bytes]:
+    """Return a corrected valid short APDU, or None when encoding is unsupported."""
+    if not 0 <= le <= 0xFF:
+        return None
     if len(apdu) == 4:
         return apdu + bytes([le])
     if len(apdu) == 5:
         return apdu[:-1] + bytes([le])
+    if len(apdu) < 5 or apdu[4] == 0:
+        return None  # malformed or extended APDU
     lc = apdu[4]
-    if len(apdu) == 5 + lc:
+    if len(apdu) == 5 + lc and lc > 0:
         return apdu + bytes([le])
-    return apdu[:-1] + bytes([le])
+    if len(apdu) == 6 + lc and lc > 0:
+        return apdu[:-1] + bytes([le])
+    return None

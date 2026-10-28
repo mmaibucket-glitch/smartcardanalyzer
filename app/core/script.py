@@ -39,6 +39,8 @@ def parse_script(text: str) -> list[ScriptStep]:
             apdu_bytes = apdu.parse_hex(code)
         except ValueError as exc:
             raise ValueError(f"line {line_no}: {exc}") from exc
+        if len(apdu_bytes) < 4:
+            raise ValueError(f"line {line_no}: APDU must contain at least 4 header bytes.")
         steps.append(ScriptStep(line_no=line_no, apdu=apdu_bytes, comment=comment))
     return steps
 
@@ -93,7 +95,15 @@ def run_script(
             )
             break
         if delay_ms > 0 and index + 1 < len(steps):
-            time.sleep(delay_ms / 1000)
+            _interruptible_delay(delay_ms, should_stop)
     summary["run"] = run
     summary["sw_counts"] = sw_counts
     return summary
+
+
+def _interruptible_delay(delay_ms: int, should_stop: Callable[[], bool]) -> None:
+    remaining = delay_ms / 1000
+    while remaining > 0 and not should_stop():
+        interval = min(remaining, 0.05)
+        time.sleep(interval)
+        remaining -= interval

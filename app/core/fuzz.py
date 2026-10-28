@@ -2,8 +2,9 @@
 
 Mutation mode corrupts a seed APDU with strategies such as bit flips and
 boundary values. Protocol-aware mode ignores the seed and generates
-well-formed commands from a pool of known instruction codes; with safe mode
-on, that pool is restricted to read-only instructions.
+well-formed commands from a pool of known instruction codes. Safe mode skips
+instruction codes classified as card-modifying; authentication and unknown
+commands remain available in mutation mode.
 
 WARNING: fuzzing sends APDUs to a real card and can trigger state changes on
 some cards (e.g. burning verification-failure counters or writing
@@ -210,7 +211,7 @@ def run_fuzz(
             notable.append((apdu.format_hex(case), sw, description))
             emit("notable", index, apdu.format_hex(case), sw, description)
         if delay_ms > 0:
-            time.sleep(delay_ms / 1000)
+            _interruptible_delay(delay_ms, should_stop)
     return {
         "sent": sent,
         "skipped": skipped,
@@ -218,3 +219,11 @@ def run_fuzz(
         "notable": notable,
         "stopped": stopped,
     }
+
+
+def _interruptible_delay(delay_ms: int, should_stop: Callable[[], bool]) -> None:
+    remaining = delay_ms / 1000
+    while remaining > 0 and not should_stop():
+        interval = min(remaining, 0.05)
+        time.sleep(interval)
+        remaining -= interval

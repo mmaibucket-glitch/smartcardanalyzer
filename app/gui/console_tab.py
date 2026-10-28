@@ -36,6 +36,7 @@ class ConsoleTab(QWidget):
         self._last_response_data: Optional[bytes] = None
         self._build_ui()
         main_window.session_changed.connect(self._on_session_changed)
+        main_window.operation_changed.connect(self._on_operation_changed)
         main_window.safety_changed.connect(self._on_safety_changed)
         self.refresh_readers()
 
@@ -84,8 +85,8 @@ class ConsoleTab(QWidget):
             bool(getattr(self.main_window, "safe_mode", True))
         )
         self.safe_mode_check.setToolTip(
-            "Block card-modifying commands (UPDATE BINARY, PUT DATA, ...) so a "
-            "mistake cannot change anything on the card."
+            "Block known card-modifying instruction codes. Authentication and "
+            "unknown commands remain available, so check each command before sending."
         )
         options_row.addWidget(self.auto_response_check)
         options_row.addWidget(self.safe_mode_check)
@@ -151,6 +152,9 @@ class ConsoleTab(QWidget):
                 self.main_window.connect_reader(reader_name)
 
     def send_apdu(self) -> None:
+        if self.main_window.operation_busy:
+            self._status("Wait for the current card operation to finish.", 3000)
+            return
         session = self.main_window.session
         if session is None:
             self._status("Connect to a reader first.", 3000)
@@ -163,6 +167,10 @@ class ConsoleTab(QWidget):
         except ValueError as exc:
             self._status(str(exc), 3000)
             self.log.log_message(f"! Invalid APDU: {exc}", "error")
+            return
+        if len(command) < 4:
+            self._status("An APDU must contain at least 4 header bytes.", 3000)
+            self.log.log_message("! An APDU must contain at least 4 header bytes.", "error")
             return
         reason = safety.blocked_reason(command, self.main_window.safe_mode)
         if reason:
@@ -216,9 +224,8 @@ class ConsoleTab(QWidget):
             self.log.log_message(apdu.hexdump(data), "rx")
         elif data:
             self.log.log_message(f"< {apdu.format_hex(data)}", "rx")
-        if data:
-            self._last_response_data = data
-            self._update_send_state()
+        self._last_response_data = data if data else None
+        self._update_send_state()
         self.log.log_message(
             f"< SW {sw1:02X} {sw2:02X} - {apdu.describe_sw(sw1, sw2)}", "sw"
         )
@@ -256,6 +263,10 @@ class ConsoleTab(QWidget):
     def _on_safety_changed(self, enabled: bool) -> None:
         self.safe_mode_check.setChecked(enabled)
 
+    def _on_operation_changed(self, busy: bool) -> None:
+        self.safe_mode_check.setEnabled(not busy)
+        self._update_send_state()
+
     def _on_apdu_built(self, built: bytes) -> None:
         self.command_input.setText(apdu.format_hex(built))
         self.command_input.setFocus()
@@ -273,6 +284,7 @@ class ConsoleTab(QWidget):
 
     def _update_send_state(self) -> None:
         ready = self.main_window.session is not None
+        ready = ready and not self.main_window.operation_busy
         self.send_button.setEnabled(ready)
         self.command_input.setEnabled(ready)
         self.tlv_button.setEnabled(ready and self._last_response_data is not None)

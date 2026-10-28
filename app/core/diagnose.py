@@ -36,21 +36,25 @@ def _service_start_hint() -> str:
 
 ERROR_HINTS: dict[str, str] = {
     "8010000c": "No card in the reader. Insert a card and press Connect again.",
-    "80100018": "The PC/SC service is not running. " + _service_start_hint(),
-    "80100019": "The PC/SC service was stopped. Restart it and try again.",
+    "8010001d": "The PC/SC service is not running. " + _service_start_hint(),
+    "8010001e": "The PC/SC service was stopped. Restart it and try again.",
     "8010002e": "No reader is plugged in (or its driver is missing).",
     "8010000b": (
         "Another program is using this reader. Close other card applications "
         "(some browsers and GPG can hold readers) and try again."
     ),
-    "80100013": "The reader is busy or unavailable. Unplug and reconnect it, then Refresh.",
+    "80100017": "The reader is busy or unavailable. Unplug and reconnect it, then Refresh.",
     "8010000a": "The operation timed out. Make sure the card sits firmly in the reader.",
     "8010000d": "The reader does not recognize this card type (driver problem).",
-    "80100011": "The operation was cancelled.",
+    "80100002": "The operation was cancelled.",
+    "80100012": "The operation was cancelled by the system.",
     "8010000f": (
         "The card communicates with a protocol the reader session does not "
         "support. Disconnect, reconnect the card, and connect again."
     ),
+    "80100069": "The card was removed. Reinsert it and connect again.",
+    "80100068": "The card was reset during communication. Disconnect and connect again.",
+    "80100066": "The card did not respond. Reinsert it and connect again.",
 }
 
 
@@ -90,5 +94,7 @@ def translate_error(message: str) -> str:
     for match in _ERROR_CODE_PATTERN.finditer(message):
         hint: Optional[str] = ERROR_HINTS.get(match.group(1).lower())
         if hint is not None:
+            if hint in message:
+                return message
             return f"{message} - {hint}"
     return message

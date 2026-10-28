@@ -53,6 +53,7 @@ PRESETS: list[dict[str, object]] = [
         "ins": 0xB0,
         "p1": 0x00,
         "p2": 0x00,
+        "le": 0x00,
         "hint": (
             "P1P2 = byte offset in the selected file. "
             "Le = how many bytes to read (00 means 256)."
@@ -64,6 +65,7 @@ PRESETS: list[dict[str, object]] = [
         "ins": 0xB2,
         "p1": 0x01,
         "p2": 0x04,
+        "le": 0x00,
         "hint": (
             "P1 = record number; P2 low bits select the short file (SFI), "
             "04 = read one record. Le = length (00 = 256)."
@@ -75,6 +77,7 @@ PRESETS: list[dict[str, object]] = [
         "ins": 0xC0,
         "p1": 0x00,
         "p2": 0x00,
+        "le": 0x00,
         "hint": (
             "Le = how many bytes the card still owes you after a 61XX "
             "'more data' status (00 = 256)."
@@ -86,6 +89,7 @@ PRESETS: list[dict[str, object]] = [
         "ins": 0xCA,
         "p1": 0x00,
         "p2": 0x6F,
+        "le": 0x00,
         "hint": (
             "P1P2 = the tag to read, e.g. 00 6F = file control info, "
             "9F 36 = application transaction counter on payment cards. "

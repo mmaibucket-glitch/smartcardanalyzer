@@ -6,9 +6,8 @@ the card sent when it was connected), asks the card for EF.DIR (the
 application directory most cards keep) and reads it, then matches the
 application identifiers (AIDs) it finds against a short list of well-known
 card types such as payment cards, OpenPGP, PIV and ePassport. When a card
-keeps no EF.DIR, a handful of well-known AIDs are probed with harmless
-SELECT commands instead. Nothing is ever written to the card, no
-authentication is attempted, and every command sent is read-only. The
+keeps no EF.DIR, a handful of well-known AIDs are probed with SELECT
+commands instead. The scan does not send write or authentication commands. The
 finished profile also carries a short list of plain-language suggestions
 for safe things to try next, built from the app's real scripts, presets
 and buttons.
@@ -27,11 +26,11 @@ MAX_DIR_BYTES = 1024
 PROBE_LIMIT = 12
 
 KNOWN_AIDS: dict[str, str] = {
-    "A0000000030000": "Visa credit/debit (EMV payment)",
+    "A0000000031010": "Visa credit/debit (EMV payment)",
     "A0000000041010": "Mastercard (EMV payment)",
     "A0000000043060": "Maestro (EMV payment)",
     "A000000025": "American Express (EMV payment)",
-    "A0000000620001": "OpenPGP card",
+    "D27600012401": "OpenPGP card",
     "A0000003080000100000": "PIV card (US Personal Identity Verification)",
     "A0000002471001": "ICAO ePassport / Machine Readable Travel Document",
 }
@@ -75,8 +74,7 @@ def parse_atr(atr: bytes) -> AtrInfo:
     """Parse an ATR into protocol and historical-byte parts; never raises.
 
     Interface bytes are followed through the TA/TB/TC/TD chain; each TDi
-    contributes protocol T = its low nibble (T=0 is offered too in
-    negotiable mode, i.e. when TA2 is absent). Anything unparseable falls
+    contributes the protocol named by its low nibble. Anything unparseable falls
     back to a summary of the raw hex.
     """
     atr = bytes(atr)
@@ -92,9 +90,7 @@ def parse_atr(atr: bytes) -> AtrInfo:
     t0 = atr[1]
     historical_count = t0 & 0x0F
     ts_seen: list[int] = []
-    ta2_present = False
     y = t0 >> 4
-    group = 1
     index = 2
     while y:
         needed = sum(1 for bit in range(4) if y & (1 << bit))
@@ -114,9 +110,6 @@ def parse_atr(atr: bytes) -> AtrInfo:
             index += 1
             if bit == 3:
                 td_value = value
-            elif group == 2 and bit == 0:
-                ta2_present = True
-        group += 1
         if td_value is None:
             break
         ts_seen.append(td_value & 0x0F)
@@ -130,11 +123,9 @@ def parse_atr(atr: bytes) -> AtrInfo:
     else:
         protocols = []
         for protocol in ts_seen:
-            name = "T=15 (proprietary)" if protocol == 15 else f"T={protocol}"
+            name = "Global interface bytes (T=15)" if protocol == 15 else f"T={protocol}"
             if name not in protocols:
                 protocols.append(name)
-        if 0 not in ts_seen and 15 not in ts_seen and not ta2_present:
-            protocols.insert(0, "T=0")
     historical_text = apdu.format_hex(historical) if historical else "none"
     summary = f"Protocols: {', '.join(protocols)} · Historical bytes: {historical_text}"
     return AtrInfo(
@@ -258,7 +249,6 @@ def _probe_known_apps(
         if (result.sw1, result.sw2) == (0x90, 0x00):
             _progress(emit, f"Found {name}.")
             apps.append(AppInfo(aid=aid, known_name=name))
-            break
     return apps
 
 
@@ -291,7 +281,9 @@ def _finalize(profile: CardProfile) -> CardProfile:
     else:
         profile.label = "Unknown card"
     profile.notes.append(f"Applications found: {len(profile.apps)}")
-    profile.notes.append("Identification is a best-effort, read-only probe.")
+    profile.notes.append(
+        "Identification is a best-effort probe using SELECT and read commands."
+    )
     return profile
 
 
@@ -313,8 +305,9 @@ def build_suggestions(profile: CardProfile) -> list[str]:
             "harmless read-only counter.",
             "Run the bundled read_ef_dir script from the Script tab to list "
             "the card's applications again at your own pace.",
-            "Safe mode keeps every command read-only, so trying these reads "
-            "cannot change anything on the card.",
+            "Safe mode blocks known card-modifying instructions. Unknown and "
+            "authentication commands can still be sent, so check each command "
+            "before sending it.",
             PIN_WARNING,
         ]
     if any("openpgp" in name for name in known_names):
@@ -323,7 +316,7 @@ def build_suggestions(profile: CardProfile) -> list[str]:
             "the Script tab and run it there to select the OpenPGP "
             "application yourself.",
             "In the Console tab's guided builder, pick the GET DATA (CA) "
-            "preset and read tag 4F 82, the OpenPGP AID.",
+            "preset and read tag 00 4F, the OpenPGP AID (Le 00).",
             PIN_WARNING,
         ]
     if any("piv" in name for name in known_names):
@@ -331,7 +324,8 @@ def build_suggestions(profile: CardProfile) -> list[str]:
             "Run the bundled read_ef_dir script from the Script tab to see "
             "the card's directory of applications and files.",
             "In the Console tab's guided builder, pick the GET DATA (CA) "
-            "preset to explore the card with read-only GET DATA commands.",
+            "preset to try GET DATA commands; check the tag and card documentation "
+            "before sending a command.",
             PIN_WARNING,
         ]
     if profile.apps:
@@ -340,7 +334,8 @@ def build_suggestions(profile: CardProfile) -> list[str]:
             "the Script tab and run it there to select the applications the "
             "card listed.",
             "Then use the guided builder in the Console tab to explore the "
-            "selected application with read-only commands.",
+            "selected application with commands that suit that card; check each "
+            "command before sending it.",
         ]
     return [
         "Open the Getting Started tab for a beginner-friendly walkthrough "

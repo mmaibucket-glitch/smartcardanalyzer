@@ -6,6 +6,7 @@ from typing import Optional
 
 from smartcard.CardConnection import CardConnection
 from smartcard.Exceptions import SmartcardException
+from smartcard.pcsc.PCSCExceptions import BaseSCardException
 from smartcard.System import readers
 
 from app.core import diagnose
@@ -19,7 +20,7 @@ def list_readers() -> list[str]:
     """Return the names of all PC/SC readers currently attached to the system."""
     try:
         return [str(reader) for reader in readers()]
-    except SmartcardException:
+    except (SmartcardException, BaseSCardException):
         return []
 
 
@@ -43,11 +44,17 @@ class CardSession:
         """Connect to the card in the reader and return its ATR."""
         if self._connection is not None:
             raise PcscError(f"Already connected to '{self._reader_name}'.")
-        connection = self._find_reader(self._reader_name).createConnection()
+        connection = None
         try:
+            connection = self._find_reader(self._reader_name).createConnection()
             connection.connect()
-            atr = connection.getAtr()
-        except SmartcardException as exc:
+            atr = connection.getATR()
+        except (SmartcardException, BaseSCardException) as exc:
+            if connection is not None:
+                try:
+                    connection.disconnect()
+                except (SmartcardException, BaseSCardException):
+                    pass
             raise PcscError(
                 diagnose.translate_error(
                     f"Could not connect to a card in '{self._reader_name}': {exc}"
@@ -62,9 +69,9 @@ class CardSession:
         if self._connection is None:
             raise PcscError("Not connected to a card.")
         try:
-            data, sw1, sw2 = self._connection.transmit(bytes(apdu))
-        except SmartcardException as exc:
-            raise PcscError(f"Transmit failed: {exc}") from exc
+            data, sw1, sw2 = self._connection.transmit(list(apdu))
+        except (SmartcardException, BaseSCardException) as exc:
+            raise PcscError(diagnose.translate_error(f"Transmit failed: {exc}")) from exc
         return bytes(data), sw1, sw2
 
     def disconnect(self) -> None:
@@ -72,7 +79,7 @@ class CardSession:
             return
         try:
             self._connection.disconnect()
-        except SmartcardException:
+        except (SmartcardException, BaseSCardException):
             pass
         self._connection = None
         self.atr = None

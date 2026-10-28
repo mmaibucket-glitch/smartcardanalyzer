@@ -12,12 +12,11 @@
 #   B0     instruction: READ BINARY
 #   00 00  P1-P2 together form the 15-bit offset inside the file; here the
 #          offset is 0, the very first byte of the file
-#   (no Le) no length byte is sent, so the card returns as much as it can,
-#          up to 256 bytes or up to the end of the file
+#   00     Le: request 256 bytes (short Le 00 means 256)
 #
 # WHAT YOU SHOULD SEE
 #   The file contents followed by SW 90 00. SW 6B 00 means the offset lies
 #   outside the file; SW 69 86 means no elementary file is selected.
 #
 # This command does not write anything to the card.
-00 B0 00 00
+00 B0 00 00 00

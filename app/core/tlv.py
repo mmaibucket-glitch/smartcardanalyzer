@@ -85,17 +85,21 @@ def _read_tag(data: bytes, index: int) -> tuple[int, int | None]:
     first = data[index]
     if first & 0x1F != 0x1F:
         return first, index + 1
-    if index + 1 >= len(data):
-        return first, None
-    second = data[index + 1]
-    if second & 0x80:
-        return first, None
-    return (first << 8) | second, index + 2
+    tag = first
+    cursor = index + 1
+    while cursor < len(data):
+        octet = data[cursor]
+        tag = (tag << 8) | octet
+        cursor += 1
+        if not octet & 0x80:
+            return tag, cursor
+    return first, None
 
 
 def _is_constructed(tag: int) -> bool:
     """True when the first tag octet has the constructed (C) bit set."""
-    first = tag >> 8 if tag > 0xFF else tag
+    octets = (tag.bit_length() + 7) // 8
+    first = tag >> (8 * (octets - 1))
     return bool(first & 0x20)
 
 

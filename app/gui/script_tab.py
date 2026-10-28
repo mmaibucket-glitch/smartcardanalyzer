@@ -45,6 +45,7 @@ class ScriptTab(QWidget):
         self._build_ui()
         self._populate_library()
         main_window.session_changed.connect(self._on_session_changed)
+        main_window.operation_changed.connect(lambda _busy: self._update_run_state())
         self._update_run_state()
 
     def _build_ui(self) -> None:
@@ -160,6 +161,9 @@ class ScriptTab(QWidget):
         self._status(f"Loaded library script '{name}'.")
 
     def _run(self) -> None:
+        if self.main_window.operation_busy:
+            self._status("Wait for the current card operation to finish.", 3000)
+            return
         session = self.main_window.session
         if session is None:
             self._status("Connect to a reader first.", 3000)
@@ -208,6 +212,8 @@ class ScriptTab(QWidget):
         runner.step.connect(self._on_step)
         runner.completed.connect(self._on_completed)
         runner.failed.connect(self._on_failed)
+        if not self.main_window.register_runner(runner):
+            return
         self._runner = runner
         self._set_running(True)
         self.log.log_message(f"Running script: {len(steps)} step(s)...", "info")
@@ -282,7 +288,9 @@ class ScriptTab(QWidget):
 
     def _update_run_state(self) -> None:
         session_ready = self.main_window.session is not None
-        self.run_button.setEnabled(session_ready and not self._running)
+        self.run_button.setEnabled(
+            session_ready and not self._running and not self.main_window.operation_busy
+        )
         self.stop_button.setEnabled(self._running)
 
     def _status(self, message: str, timeout: int = 0) -> None:

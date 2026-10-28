@@ -91,7 +91,8 @@ def describe_sw(sw1: int, sw2: int) -> str:
         return STATUS_WORDS[key]
     prefix = f"{sw1:02X}"
     if prefix == "61":
-        return f"More data available: {sw2} bytes (send GET RESPONSE)"
+        count = 256 if sw2 == 0 else sw2
+        return f"More data available: {count} bytes (send GET RESPONSE)"
     if prefix == "63" and 0xC0 <= sw2 <= 0xCF:
         return f"Verification failed, {sw2 & 0x0F} attempts remaining"
     if prefix == "6C":
